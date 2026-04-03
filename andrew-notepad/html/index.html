@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notizblock</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main id="app" class="hidden">
+        <section id="notepad-panel" class="panel hidden" aria-hidden="true">
+            <div class="panel__glow"></div>
+            <header class="panel__header">
+                <div>
+                    <p class="eyebrow">Notizen</p>
+                    <h1 id="note-title">Notizblock</h1>
+                </div>
+                <button id="close-btn" class="icon-btn" type="button" aria-label="Schließen">×</button>
+            </header>
+
+            <div class="panel__meta">
+                <span class="badge">Strg + S speichert</span>
+                <span id="save-state" class="status">Nicht gespeichert</span>
+            </div>
+
+            <label class="sr-only" for="note-text">Notiztext</label>
+            <textarea id="note-text" maxlength="5000" placeholder="Schreibe hier deine Notiz..."></textarea>
+
+            <footer class="panel__footer">
+                <div class="hint">Speichern ohne Abreißen ist jetzt direkt möglich.</div>
+                <div class="actions">
+                    <button id="save-btn" class="btn btn--secondary" type="button">Speichern</button>
+                    <button id="tear-btn" class="btn btn--primary" type="button">Speichern &amp; Abreißen</button>
+                </div>
+            </footer>
+        </section>
+
+        <section id="paper-panel" class="paper hidden" aria-hidden="true">
+            <div class="paper__sheet">
+                <div class="paper__holes" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+                <pre id="read-text"></pre>
+            </div>
+            <button id="close-paper" class="btn btn--primary" type="button">Weglegen</button>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
