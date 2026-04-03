@@ -1,48 +1,33 @@
-name: Discord Push Notification
+name: Discord Notification
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  notify-discord:
+  discord-notification:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Send push info to Discord
-        shell: bash
-        env:
-          BRANCH: ${{ github.ref_name }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          COMMIT_URL: ${{ github.event.head_commit.url }}
-          PUSH_URL: ${{ github.event.compare }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          if [ -z "$COMMIT_MESSAGE" ]; then
-            COMMIT_MESSAGE="(keine Beschreibung)"
-          fi
-
-          MESSAGE="Neuer Push:
-URL: ${PUSH_URL}
-Branch: ${BRANCH}
-Commit: ${COMMIT_URL}
-Description: ${COMMIT_MESSAGE}"
-
-          export MESSAGE
-
-          JSON=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"], "flags": 4}))')
-
-          RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
-            -H "Content-Type: application/json" \
-            -X POST \
-            -d "$JSON" \
-            "$DISCORD_WEBHOOK_URL")
-
-          echo "HTTP Status: $RESPONSE"
-          cat response.txt
-
-          if [ "$RESPONSE" -lt 200 ] || [ "$RESPONSE" -ge 300 ]; then
-            exit 1
-          fi
+      - name: Send Embed to Discord
+        uses: tsickert/discord-webhook@v4
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embeds: |
+            [{
+              "title": "Code Push",
+              "description": "Ein neuer Push wurde auf ${{ github.repository }} registriert.",
+              "color": 65280,
+              "fields": [
+                {
+                  "name": "Committer",
+                  "value": "${{ github.actor }}",
+                  "inline": true
+                },
+                {
+                  "name": "Branch",
+                  "value": "${{ github.ref_name }}",
+                  "inline": true
+                }
+              ]
+            }]
