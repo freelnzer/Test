@@ -11,29 +11,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test secret exists
+      - name: Send push info to Discord
         shell: bash
         run: |
-          if [ -z "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
-            echo "FEHLER: DISCORD_WEBHOOK_URL Secret fehlt"
-            exit 1
-          fi
-          echo "Secret ist gesetzt"
+          BRANCH="${{ github.ref_name }}"
+          COMMIT="${{ github.event.head_commit.message }}"
+          PUSH_URL="${{ github.event.compare }}"
 
-      - name: Send simple Discord message
-        shell: bash
-        run: |
+          JSON=$(python3 - <<'PY'
+import json
+import os
+
+content = (
+    "🚀 Neuer Push\n\n"
+    f"Branch: {os.environ['BRANCH']}\n"
+    f"Commit: {os.environ['COMMIT']}\n"
+    f"URL: {os.environ['PUSH_URL']}"
+)
+print(json.dumps({"content": content}))
+PY
+)
+
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -X POST \
-            -d '{"content":"Test aus GitHub Actions"}' \
+            -d "$JSON" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}")
 
           echo "HTTP Status: $RESPONSE"
-          echo "Response body:"
           cat response.txt
 
           if [ "$RESPONSE" -lt 200 ] || [ "$RESPONSE" -ge 300 ]; then
-            echo "FEHLER: Discord hat keinen Erfolgscode zurückgegeben"
             exit 1
           fi
+        env:
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.event.head_commit.message }}
+          PUSH_URL: ${{ github.event.compare }}
