@@ -37,3 +37,4 @@ server_scripts {
 dependencies {
     'qb-core'
 }
+
