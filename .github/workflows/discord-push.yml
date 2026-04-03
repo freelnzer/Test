@@ -15,11 +15,22 @@ jobs:
         shell: bash
         env:
           BRANCH: ${{ github.ref_name }}
-          COMMIT: ${{ github.event.head_commit.message }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
           PUSH_URL: ${{ github.event.compare }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          MESSAGE="🚀 Neuer Push | Branch: ${BRANCH} | Commit: ${COMMIT} | URL: ${PUSH_URL}"
+          if [ -z "$COMMIT_MESSAGE" ]; then
+            COMMIT_MESSAGE="(keine Beschreibung)"
+          fi
+
+          MESSAGE="Neuer Push:
+
+          URL: ${PUSH_URL}
+          Branch: ${BRANCH}
+          Commit: ${COMMIT_URL}
+          Description: ${COMMIT_MESSAGE}"
+
           export MESSAGE
 
           ESCAPED_MESSAGE=$(python3 -c 'import json,os; print(json.dumps(os.environ["MESSAGE"]))')
