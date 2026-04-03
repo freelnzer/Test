@@ -19,14 +19,8 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
         run: |
-          payload=$(jq -n \
-            --arg content "🚀 Push auf ${BRANCH} in ${REPO}
-Von: ${ACTOR}
-Commit: ${COMMIT_MESSAGE}
-${COMMIT_URL}" \
-            '{content: $content}')
-
+          MESSAGE="🚀 Push auf ${BRANCH} in ${REPO}\nVon: ${ACTOR}\nCommit: ${COMMIT_MESSAGE}\n${COMMIT_URL}"
           curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "$payload" \
-               "$DISCORD_WEBHOOK_URL"
+            -X POST \
+            -d "{\"content\":\"${MESSAGE}\"}" \
+            "$DISCORD_WEBHOOK_URL"
