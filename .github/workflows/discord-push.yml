@@ -31,26 +31,21 @@ jobs:
           fi
 
           SHORT_HASH=$(echo "$COMMIT_URL" | rev | cut -c1-7 | rev)
-
-          cat > /tmp/build_payload.py << PYEOF
-import json, os
-embed = {
-    "color": 5814783,
-    "author": {
-        "name": "Push von " + os.environ["PUSHER"],
-        "icon_url": "https://github.com/" + os.environ["PUSHER"] + ".png?size=32"
-    },
-    "fields": [
-        {"name": "Commit", "value": "[" + os.environ["SHORT_HASH"] + "](" + os.environ["COMMIT_URL"] + ")", "inline": True},
-        {"name": "Branch", "value": "`" + os.environ["BRANCH"] + "`", "inline": True},
-        {"name": "Summary", "value": os.environ["SUMMARY"], "inline": False},
-        {"name": "Description", "value": os.environ["DESCRIPTION"], "inline": False}
-    ]
-}
-print(json.dumps({"embeds": [embed]}))
-PYEOF
-
           export SUMMARY DESCRIPTION SHORT_HASH
+
+          echo "import json, os" > /tmp/build_payload.py
+          echo "embed = {" >> /tmp/build_payload.py
+          echo "    'color': 5814783," >> /tmp/build_payload.py
+          echo "    'author': {'name': 'Push von ' + os.environ['PUSHER'], 'icon_url': 'https://github.com/' + os.environ['PUSHER'] + '.png?size=32'}," >> /tmp/build_payload.py
+          echo "    'fields': [" >> /tmp/build_payload.py
+          echo "        {'name': 'Commit', 'value': '[' + os.environ['SHORT_HASH'] + '](' + os.environ['COMMIT_URL'] + ')', 'inline': True}," >> /tmp/build_payload.py
+          echo "        {'name': 'Branch', 'value': '\`' + os.environ['BRANCH'] + '\`', 'inline': True}," >> /tmp/build_payload.py
+          echo "        {'name': 'Summary', 'value': os.environ['SUMMARY'], 'inline': False}," >> /tmp/build_payload.py
+          echo "        {'name': 'Description', 'value': os.environ['DESCRIPTION'], 'inline': False}" >> /tmp/build_payload.py
+          echo "    ]" >> /tmp/build_payload.py
+          echo "}" >> /tmp/build_payload.py
+          echo "print(json.dumps({'embeds': [embed]}))" >> /tmp/build_payload.py
+
           JSON=$(python3 /tmp/build_payload.py)
 
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
