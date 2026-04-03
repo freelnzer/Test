@@ -14,15 +14,20 @@ jobs:
         shell: bash
         env:
           BRANCH: ${{ github.ref_name }}
+          PUSHER: ${{ github.actor }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
-          PUSH_URL: ${{ github.event.compare }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           if [ -z "$COMMIT_MESSAGE" ]; then
             COMMIT_MESSAGE="(keine Beschreibung)"
           fi
-          MESSAGE=$(printf 'Neuer Push:\nURL: %s\nBranch: %s\nCommit: %s\nDescription: %s' "$PUSH_URL" "$BRANCH" "$COMMIT_URL" "$COMMIT_MESSAGE")
+          SUMMARY=$(echo "$COMMIT_MESSAGE" | head -n 1)
+          DESCRIPTION=$(echo "$COMMIT_MESSAGE" | tail -n +2 | sed '/^[[:space:]]*$/d' | head -n 1)
+          if [ -z "$DESCRIPTION" ]; then
+            DESCRIPTION="(keine Beschreibung)"
+          fi
+          MESSAGE=$(printf 'Push von %s\nSummary: %s\nBranch: %s\nCommit: %s\nDescription: %s' "$PUSHER" "$SUMMARY" "$BRANCH" "$COMMIT_URL" "$DESCRIPTION")
           export MESSAGE
           JSON=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"], "flags": 4}))')
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
