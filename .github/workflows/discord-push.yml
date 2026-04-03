@@ -22,36 +22,46 @@ jobs:
           if [ -z "$COMMIT_MESSAGE" ]; then
             COMMIT_MESSAGE="(keine Beschreibung)"
           fi
+
           SUMMARY=$(echo "$COMMIT_MESSAGE" | head -n 1)
           DESCRIPTION=$(echo "$COMMIT_MESSAGE" | tail -n +2 | sed '/^[[:space:]]*$/d' | head -n 1)
+
           if [ -z "$DESCRIPTION" ]; then
             DESCRIPTION="(keine Beschreibung)"
           fi
-          export PUSHER BRANCH COMMIT_URL SUMMARY DESCRIPTION
-          JSON=$(python3 -c '
+
+          SHORT_HASH=$(echo "$COMMIT_URL" | rev | cut -c1-7 | rev)
+
+          cat > /tmp/build_payload.py << PYEOF
 import json, os
 embed = {
-  "color": 5814783,
-  "author": {
-    "name": "Push von " + os.environ["PUSHER"],
-    "icon_url": "https://github.com/" + os.environ["PUSHER"] + ".png?size=32"
-  },
-  "fields": [
-    {"name": "Commit", "value": "[" + os.environ["COMMIT_URL"].split("/")[-1][:7] + "](" + os.environ["COMMIT_URL"] + ")", "inline": True},
-    {"name": "Branch", "value": "`" + os.environ["BRANCH"] + "`", "inline": True},
-    {"name": "Summary", "value": os.environ["SUMMARY"], "inline": False},
-    {"name": "Description", "value": os.environ["DESCRIPTION"], "inline": False}
-  ]
+    "color": 5814783,
+    "author": {
+        "name": "Push von " + os.environ["PUSHER"],
+        "icon_url": "https://github.com/" + os.environ["PUSHER"] + ".png?size=32"
+    },
+    "fields": [
+        {"name": "Commit", "value": "[" + os.environ["SHORT_HASH"] + "](" + os.environ["COMMIT_URL"] + ")", "inline": True},
+        {"name": "Branch", "value": "`" + os.environ["BRANCH"] + "`", "inline": True},
+        {"name": "Summary", "value": os.environ["SUMMARY"], "inline": False},
+        {"name": "Description", "value": os.environ["DESCRIPTION"], "inline": False}
+    ]
 }
 print(json.dumps({"embeds": [embed]}))
-')
+PYEOF
+
+          export SUMMARY DESCRIPTION SHORT_HASH
+          JSON=$(python3 /tmp/build_payload.py)
+
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -X POST \
             -d "$JSON" \
             "$DISCORD_WEBHOOK_URL")
+
           echo "HTTP Status: $RESPONSE"
           cat response.txt
+
           if [ "$RESPONSE" -lt 200 ] || [ "$RESPONSE" -ge 300 ]; then
             exit 1
           fi
