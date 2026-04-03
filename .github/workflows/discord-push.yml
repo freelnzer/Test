@@ -4,23 +4,22 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   notify-discord:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Send push message to Discord
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          REPO: ${{ github.repository }}
-          BRANCH: ${{ github.ref_name }}
-          ACTOR: ${{ github.actor }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          COMMIT_URL: ${{ github.event.head_commit.url }}
+      - name: Debug trigger
         run: |
-          MESSAGE="🚀 Push auf ${BRANCH} in ${REPO}\nVon: ${ACTOR}\nCommit: ${COMMIT_MESSAGE}\n${COMMIT_URL}"
+          echo "event=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "ref_name=${{ github.ref_name }}"
+          echo "actor=${{ github.actor }}"
+
+      - name: Send test message to Discord
+        run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\":\"${MESSAGE}\"}" \
-            "$DISCORD_WEBHOOK_URL"
+            -d '{"content":"Test: Workflow wurde ausgelöst"}' \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
