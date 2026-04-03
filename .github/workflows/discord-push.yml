@@ -27,9 +27,24 @@ jobs:
           if [ -z "$DESCRIPTION" ]; then
             DESCRIPTION="(keine Beschreibung)"
           fi
-          MESSAGE=$(printf 'Push von %s\nSummary: %s\nBranch: %s\nCommit: %s\nDescription: %s' "$PUSHER" "$SUMMARY" "$BRANCH" "$COMMIT_URL" "$DESCRIPTION")
-          export MESSAGE
-          JSON=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"], "flags": 4}))')
+          export PUSHER BRANCH COMMIT_URL SUMMARY DESCRIPTION
+          JSON=$(python3 -c '
+import json, os
+embed = {
+  "color": 5814783,
+  "author": {
+    "name": "Push von " + os.environ["PUSHER"],
+    "icon_url": "https://github.com/" + os.environ["PUSHER"] + ".png?size=32"
+  },
+  "fields": [
+    {"name": "Commit", "value": "[" + os.environ["COMMIT_URL"].split("/")[-1][:7] + "](" + os.environ["COMMIT_URL"] + ")", "inline": True},
+    {"name": "Branch", "value": "`" + os.environ["BRANCH"] + "`", "inline": True},
+    {"name": "Summary", "value": os.environ["SUMMARY"], "inline": False},
+    {"name": "Description", "value": os.environ["DESCRIPTION"], "inline": False}
+  ]
+}
+print(json.dumps({"embeds": [embed]}))
+')
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -X POST \
