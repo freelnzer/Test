@@ -13,30 +13,22 @@ jobs:
     steps:
       - name: Send push info to Discord
         shell: bash
+        env:
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.event.head_commit.message }}
+          PUSH_URL: ${{ github.event.compare }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          BRANCH="${{ github.ref_name }}"
-          COMMIT="${{ github.event.head_commit.message }}"
-          PUSH_URL="${{ github.event.compare }}"
+          MESSAGE="🚀 Neuer Push | Branch: ${BRANCH} | Commit: ${COMMIT} | URL: ${PUSH_URL}"
+          export MESSAGE
 
-          JSON=$(python3 - <<'PY'
-import json
-import os
-
-content = (
-    "🚀 Neuer Push\n\n"
-    f"Branch: {os.environ['BRANCH']}\n"
-    f"Commit: {os.environ['COMMIT']}\n"
-    f"URL: {os.environ['PUSH_URL']}"
-)
-print(json.dumps({"content": content}))
-PY
-)
+          ESCAPED_MESSAGE=$(python3 -c 'import json,os; print(json.dumps(os.environ["MESSAGE"]))')
 
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -X POST \
-            -d "$JSON" \
-            "${{ secrets.DISCORD_WEBHOOK_URL }}")
+            -d "{\"content\":${ESCAPED_MESSAGE}}" \
+            "$DISCORD_WEBHOOK_URL")
 
           echo "HTTP Status: $RESPONSE"
           cat response.txt
@@ -44,7 +36,3 @@ PY
           if [ "$RESPONSE" -lt 200 ] || [ "$RESPONSE" -ge 300 ]; then
             exit 1
           fi
-        env:
-          BRANCH: ${{ github.ref_name }}
-          COMMIT: ${{ github.event.head_commit.message }}
-          PUSH_URL: ${{ github.event.compare }}
