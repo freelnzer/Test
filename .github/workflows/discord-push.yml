@@ -25,20 +25,19 @@ jobs:
           fi
 
           MESSAGE="Neuer Push:
-
-          URL: ${PUSH_URL}
-          Branch: ${BRANCH}
-          Commit: ${COMMIT_URL}
-          Description: ${COMMIT_MESSAGE}"
+URL: ${PUSH_URL}
+Branch: ${BRANCH}
+Commit: ${COMMIT_URL}
+Description: ${COMMIT_MESSAGE}"
 
           export MESSAGE
 
-          ESCAPED_MESSAGE=$(python3 -c 'import json,os; print(json.dumps(os.environ["MESSAGE"]))')
+          JSON=$(python3 -c 'import json, os; print(json.dumps({"content": os.environ["MESSAGE"], "flags": 4}))')
 
           RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\":${ESCAPED_MESSAGE}}" \
+            -d "$JSON" \
             "$DISCORD_WEBHOOK_URL")
 
           echo "HTTP Status: $RESPONSE"
