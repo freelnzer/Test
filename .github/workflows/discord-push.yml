@@ -9,17 +9,49 @@ on:
 jobs:
   notify-discord:
     runs-on: ubuntu-latest
-    steps:
-      - name: Debug trigger
-        run: |
-          echo "event=${{ github.event_name }}"
-          echo "ref=${{ github.ref }}"
-          echo "ref_name=${{ github.ref_name }}"
-          echo "actor=${{ github.actor }}"
 
-      - name: Send test message to Discord
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Geänderte Dateien sammeln
+        id: changed_files
         run: |
-          curl -H "Content-Type: application/json" \
-            -X POST \
-            -d '{"content":"Test: Workflow wurde ausgelöst"}' \
-            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+          FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | head -20)
+          {
+            echo "files<<EOF"
+            if [ -z "$FILES" ]; then
+              echo "Keine Dateien erkannt"
+            else
+              echo "$FILES"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Discord-Nachricht senden
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PUSH_URL: ${{ github.event.compare }}
+          FILES: ${{ steps.changed_files.outputs.files }}
+        run: |
+          CONTENT=$(cat <<EOF
+🚀 Neuer Push
+
+Branch: ${BRANCH}
+Commit: ${COMMIT_MESSAGE}
+URL: ${PUSH_URL}
+
+Geänderte Dateien:
+${FILES}
+EOF
+)
+
+          jq -n --arg content "$CONTENT" '{content: $content}' \
+            | curl -H "Content-Type: application/json" \
+                -X POST \
+                -d @- \
+                "$DISCORD_WEBHOOK_URL"
