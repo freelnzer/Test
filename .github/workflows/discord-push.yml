@@ -18,16 +18,17 @@ jobs:
 
       - name: Geänderte Dateien sammeln
         id: changed_files
+        shell: bash
         run: |
           FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | head -20)
+          if [ -z "$FILES" ]; then
+            FILES="Keine Dateien erkannt"
+          fi
+
           {
-            echo "files<<EOF"
-            if [ -z "$FILES" ]; then
-              echo "Keine Dateien erkannt"
-            else
-              echo "$FILES"
-            fi
-            echo "EOF"
+            echo 'files<<EOF'
+            echo "$FILES"
+            echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: Discord-Nachricht senden
@@ -37,21 +38,33 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           PUSH_URL: ${{ github.event.compare }}
           FILES: ${{ steps.changed_files.outputs.files }}
+        shell: bash
         run: |
-          CONTENT=$(cat <<EOF
-🚀 Neuer Push
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
 
-Branch: ${BRANCH}
-Commit: ${COMMIT_MESSAGE}
-URL: ${PUSH_URL}
+          webhook = os.environ["DISCORD_WEBHOOK_URL"]
+          branch = os.environ["BRANCH"]
+          commit_message = os.environ["COMMIT_MESSAGE"]
+          push_url = os.environ["PUSH_URL"]
+          files = os.environ["FILES"]
 
-Geänderte Dateien:
-${FILES}
-EOF
-)
+          content = (
+              "🚀 Neuer Push\n\n"
+              f"Branch: {branch}\n"
+              f"Commit: {commit_message}\n"
+              f"URL: {push_url}\n\n"
+              f"Geänderte Dateien:\n{files}"
+          )
 
-          jq -n --arg content "$CONTENT" '{content: $content}' \
-            | curl -H "Content-Type: application/json" \
-                -X POST \
-                -d @- \
-                "$DISCORD_WEBHOOK_URL"
+          data = json.dumps({"content": content}).encode("utf-8")
+          req = urllib.request.Request(
+              webhook,
+              data=data,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          urllib.request.urlopen(req).read()
+          PY
