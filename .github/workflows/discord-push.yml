@@ -11,60 +11,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Repository auschecken
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Geänderte Dateien sammeln
-        id: changed_files
+      - name: Test secret exists
         shell: bash
         run: |
-          FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | head -20)
-          if [ -z "$FILES" ]; then
-            FILES="Keine Dateien erkannt"
+          if [ -z "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            echo "FEHLER: DISCORD_WEBHOOK_URL Secret fehlt"
+            exit 1
           fi
+          echo "Secret ist gesetzt"
 
-          {
-            echo 'files<<EOF'
-            echo "$FILES"
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Discord-Nachricht senden
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          BRANCH: ${{ github.ref_name }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          PUSH_URL: ${{ github.event.compare }}
-          FILES: ${{ steps.changed_files.outputs.files }}
+      - name: Send simple Discord message
         shell: bash
         run: |
-          python3 - <<'PY'
-          import json
-          import os
-          import urllib.request
+          RESPONSE=$(curl -s -o response.txt -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"content":"Test aus GitHub Actions"}' \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}")
 
-          webhook = os.environ["DISCORD_WEBHOOK_URL"]
-          branch = os.environ["BRANCH"]
-          commit_message = os.environ["COMMIT_MESSAGE"]
-          push_url = os.environ["PUSH_URL"]
-          files = os.environ["FILES"]
+          echo "HTTP Status: $RESPONSE"
+          echo "Response body:"
+          cat response.txt
 
-          content = (
-              "🚀 Neuer Push\n\n"
-              f"Branch: {branch}\n"
-              f"Commit: {commit_message}\n"
-              f"URL: {push_url}\n\n"
-              f"Geänderte Dateien:\n{files}"
-          )
-
-          data = json.dumps({"content": content}).encode("utf-8")
-          req = urllib.request.Request(
-              webhook,
-              data=data,
-              headers={"Content-Type": "application/json"},
-              method="POST",
-          )
-          urllib.request.urlopen(req).read()
-          PY
+          if [ "$RESPONSE" -lt 200 ] || [ "$RESPONSE" -ge 300 ]; then
+            echo "FEHLER: Discord hat keinen Erfolgscode zurückgegeben"
+            exit 1
+          fi
